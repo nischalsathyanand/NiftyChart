@@ -102,18 +102,15 @@ app.post("/adddata", upload.single("csvFile"), async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-// GET endpoint to retrieve market data with pagination
-app.get("/alldata", async (req, res) => {
-  const page = parseInt(req.query.page) || 1; // Default to page 1 if not provided
-  const limit = 3000; // Fixed limit to 3000 records per page
-  const skip = (page - 1) * limit; // Calculate the number of records to skip
 
+// GET endpoint to retrieve all market data
+app.get("/alldata", async (req, res) => {
   try {
-    // Fetch paginated data from the database
-    const data = await MarketData.find({}).skip(skip).limit(limit).exec();
+    // Fetch all data from the database without pagination
+    const data = await MarketData.find({}).exec();
 
     if (data.length === 0) {
-      return res.status(404).json({ message: "No more data to load" });
+      return res.status(404).json({ message: "No data found" });
     }
 
     res.status(200).json({
