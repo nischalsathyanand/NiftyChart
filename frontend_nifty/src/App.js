@@ -2,67 +2,48 @@ import React, { useState, useEffect } from "react";
 import NavBar from "./NavBar";
 import DataTable from "./DataTable";
 import DataChart from "./DataChart";
-import { debounce } from "lodash"; // Import lodash debounce
 
 function App() {
-  const [data, setData] = useState([]);
+  const [data, setData] = useState([]); // Holds the market data
   const [viewMode, setViewMode] = useState("table"); // 'table' or 'chart'
-  const [page, setPage] = useState(1); // Pagination page
-  const [loading, setLoading] = useState(false); // Loader state for infinite scroll
-  const [hasMoreData, setHasMoreData] = useState(true); // Check if there's more data to load
-  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false); // Loader state for data
+  const [error, setError] = useState(null); // Error state for any API issues
 
-  // Function to fetch data with pagination
-  const fetchData = async (pageNum) => {
+  // Fetch all data initially
+  const fetchData = async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(
-        `http://localhost:5000/alldata?page=${pageNum}`
-      );
+      const response = await fetch("http://localhost:5000/alldata");
       if (!response.ok) {
         const errorData = await response.json();
         setError(errorData.error);
-        setHasMoreData(false);
         return;
       }
       const result = await response.json();
-      setData((prevData) => [...prevData, ...result.data]); // Append new data
-      if (result.data.length < 3000) {
-        setHasMoreData(false); // No more data to load
-      }
+      setData(result.data); // Set fetched data
     } catch (error) {
       console.error("Error fetching data:", error);
-      setError(
-        "An unexpected error occurred. Please check the console for details."
-      );
+      setError("An unexpected error occurred. Please check the console.");
     } finally {
       setLoading(false);
     }
   };
 
-  // Load initial data when component mounts
   useEffect(() => {
-    fetchData(page); // Load first page of data
+    fetchData(); // Load data on initial mount
   }, []); // Empty dependency array ensures it only runs once
 
-  // Function to handle scroll and load more data
-  const handleScroll = debounce((event) => {
-    const bottom =
-      event.target.scrollHeight ===
-      event.target.scrollTop + event.target.clientHeight;
-    if (bottom && !loading && hasMoreData) {
-      setPage((prevPage) => {
-        const nextPage = prevPage + 1;
-        fetchData(nextPage); // Load next page
-        return nextPage; // Update page state
-      });
-    }
-  }, 500); // Debounce for 500ms
+  // Handle the file upload result
+  const handleFileUpload = (uploadedData) => {
+    // Update the state with newly uploaded data
+    setData(uploadedData);
+  };
 
   return (
     <div className="App">
-      <NavBar />
+      <NavBar onFileUpload={handleFileUpload} />{" "}
+      {/* Pass onFileUpload as a prop */}
       <div style={{ margin: "10px" }}>
         <button
           onClick={() => setViewMode("table")}
@@ -77,21 +58,13 @@ function App() {
           View Chart
         </button>
       </div>
-      {error && <div style={{ color: "red" }}>{error}</div>}
+      {error && <div style={{ color: "red" }}>{error}</div>}{" "}
+      {/* Error message */}
       {loading && <div>Loading data...</div>} {/* Loader when fetching data */}
-      {viewMode === "table" && (
-        <div
-          style={{
-            overflowY: "scroll",
-            maxHeight: "500px", // Limit the height of the table
-            border: "1px solid #ccc",
-          }}
-          onScroll={handleScroll}
-        >
-          <DataTable data={data} />
-        </div>
-      )}
-      {viewMode === "chart" && <DataChart data={data} />}
+      {viewMode === "table" && !loading && <DataTable data={data} />}{" "}
+      {/* Show table */}
+      {viewMode === "chart" && !loading && <DataChart data={data} />}{" "}
+      {/* Show chart */}
     </div>
   );
 }
